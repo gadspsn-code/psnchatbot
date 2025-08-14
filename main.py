@@ -9,6 +9,8 @@ import google.generativeai as genai
 # DO NOT add your API key here.
 API_KEY = os.environ.get('GEMINI_API_KEY')
 if not API_KEY:
+    # This will cause the app to fail to start if the key is missing,
+    # which is good for debugging deployment issues.
     raise ValueError("API key not found. Please ensure the GEMINI_API_KEY environment variable is set.")
 
 genai.configure(api_key=API_KEY)
@@ -27,7 +29,7 @@ HTML_CONTENT = """
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gemini Chatbot</title>
+    <title>Gemini Chatbot - Final Version</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
@@ -50,7 +52,7 @@ HTML_CONTENT = """
             <!-- Initial message or placeholder -->
             <div class="flex items-start">
                 <div class="bg-gray-200 text-gray-800 rounded-2xl p-4 max-w-[80%] shadow-md">
-                    Hi there! I'm your Gemini-powered chatbot. How can I help you today?
+                    Hello! This is the new, updated chatbot. How can I help?
                 </div>
             </div>
         </div>
@@ -157,7 +159,7 @@ def serve_index():
 @app.route("/generate_text", methods=["POST"])
 def generate_text():
     """Handles the chatbot's API requests for text generation."""
-    try {
+    try:
         data = request.get_json()
         user_message = data.get("text")
         
@@ -173,11 +175,10 @@ def generate_text():
         # Return the model's response.
         return jsonify({"response": response.text})
 
-    } except Exception as e {
+    except Exception as e:
         # Log the full error for debugging
         print(f"An error occurred: {e}")
         return jsonify({"error": "An internal server error occurred."}), 500
-    }
 
 # --- Main Entry Point for Cloud Run ---
 if __name__ == "__main__":
