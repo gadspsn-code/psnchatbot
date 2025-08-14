@@ -1,6 +1,3 @@
 Flask
 google-generativeai
-gunicorn
-numpy
-scikit-learn
-google-generativeai
+
