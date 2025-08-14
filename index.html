@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gemini Chatbot</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" xintegrity="sha512-SnH5WK+bZxgPHs44uWIX+LLJAJ9/2PkPKZ5QiAj6Ta86w+fsb2U82M+z+fL1K4iR1o2P/l3JcW/o+Xb/Xl5DzA==" crossorigin="anonymous" referrerpolicy="no-referrer" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .chat-container {
+            max-width: 900px;
+            height: 80vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .chat-messages {
+            flex-grow: 1;
+            overflow-y: auto;
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+        }
+        .chat-messages::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+        }
+        .message-box {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+        .message-box.user {
+            justify-content: flex-end;
+        }
+        .message-box.user .message-bubble {
+            background-color: #3b82f6;
+            color: white;
+            border-bottom-right-radius: 0;
+            border-top-right-radius: 0.5rem;
+        }
+        .message-box.ai .message-bubble {
+            background-color: #e5e7eb;
+            color: black;
+            border-bottom-left-radius: 0;
+            border-top-left-radius: 0.5rem;
+        }
+        .message-bubble {
+            max-width: 75%;
+            padding: 0.75rem 1rem;
+            border-radius: 1rem;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            word-wrap: break-word;
+        }
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border-left-color: #3b82f6;
+            animation: spin 1s ease infinite;
+            margin: auto;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+    <div class="chat-container bg-white rounded-xl shadow-lg p-6 flex flex-col">
+        <div class="flex-none p-4 rounded-t-xl bg-gray-200">
+            <h1 class="text-2xl font-bold text-gray-800 text-center">Gemini Chatbot</h1>
+            <p class="text-sm text-gray-600 text-center">Enter your prompt below to start a conversation.</p>
+        </div>
+        <div id="chat-messages" class="chat-messages p-4 flex-grow space-y-4">
+            <!-- Chat messages will be appended here -->
+        </div>
+        <div class="flex-none p-4 border-t-2 border-gray-200">
+            <div class="flex items-center space-x-2">
+                <input type="text" id="user-input" placeholder="Type your message..."
+                       class="flex-grow p-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200">
+                <button id="send-button"
+                        class="bg-blue-500 text-white p-3 rounded-full shadow-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200">
+                    <i class="fas fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Set your Cloud Run service URL here.
+        // Make sure to replace this with the URL you got after deploying your service.
+        const serviceUrl = "https://psnchatbot-345504823554.asia-south1.run.app/"; 
+        const chatMessages = document.getElementById('chat-messages');
+        const userInput = document.getElementById('user-input');
+        const sendButton = document.getElementById('send-button');
+
+        // Function to create a new message bubble
+        function createMessage(message, sender) {
+            const messageBox = document.createElement('div');
+            messageBox.classList.add('message-box', sender);
+
+            const messageBubble = document.createElement('div');
+            messageBubble.classList.add('message-bubble');
+            messageBubble.textContent = message;
+
+            messageBox.appendChild(messageBubble);
+            chatMessages.appendChild(messageBox);
+            // Scroll to the bottom of the chat
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Function to create a loading spinner
+        function createSpinner() {
+            const spinnerBox = document.createElement('div');
+            spinnerBox.id = 'loading-spinner-box';
+            spinnerBox.classList.add('message-box', 'ai');
+            
+            const spinner = document.createElement('div');
+            spinner.classList.add('spinner');
+
+            spinnerBox.appendChild(spinner);
+            chatMessages.appendChild(spinnerBox);
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+
+        // Function to remove the loading spinner
+        function removeSpinner() {
+            const spinnerBox = document.getElementById('loading-spinner-box');
+            if (spinnerBox) {
+                spinnerBox.remove();
+            }
+        }
+
+        // Function to handle sending the message
+        async function sendMessage() {
+            const prompt = userInput.value.trim();
+            if (prompt === "") {
+                return;
+            }
+
+            // Display user message
+            createMessage(prompt, 'user');
+            userInput.value = "";
+            sendButton.disabled = true;
+
+            // Display loading spinner
+            createSpinner();
+
+            try {
+                const response = await fetch(serviceUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ prompt: prompt })
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Remove loading spinner and display AI response
+                removeSpinner();
+                createMessage(data.response, 'ai');
+
+            } catch (error) {
+                console.error("Error:", error);
+                removeSpinner();
+                createMessage("Sorry, I encountered an error. Please try again.", 'ai');
+            } finally {
+                sendButton.disabled = false;
+            }
+        }
+
+        sendButton.addEventListener('click', sendMessage);
+        userInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
