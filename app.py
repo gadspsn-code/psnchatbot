@@ -21,7 +21,19 @@ else:
         print(f"ERROR: Failed to configure Gemini API. Exception: {str(e)}")
         exit(1)
 
-# --- Define the API Endpoint ---
+# --- Health Check Endpoint (GET) ---
+# This endpoint responds to a GET request, which is what a browser sends.
+# It simply confirms that the service is running.
+@app.route("/", methods=["GET"])
+def health_check():
+    """
+    A simple health check endpoint to confirm the service is running.
+    """
+    return "Service is running correctly!", 200
+
+# --- Chatbot Endpoint (POST) ---
+# This is the original endpoint for generating a response from the Gemini model.
+# It requires a POST request with a JSON body.
 @app.route("/", methods=["POST"])
 def generate_response():
     """
@@ -56,6 +68,3 @@ def generate_response():
         # Catch any errors during the generation process and log them.
         print(f"ERROR: An error occurred during response generation. Exception: {str(e)}")
         return jsonify({"response": "An error occurred while generating the response. Please try again."}), 500
-
-# The app is run by the WSGI server, so we don't need app.run() here.
-# Cloud Run will automatically run the app using Gunicorn or a similar server.
